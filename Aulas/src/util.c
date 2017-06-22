@@ -45,8 +45,8 @@ int mrand(void) {
 
 void msrand(unsigned seed) { next = seed; }
 
-int get_stripe(int tnum, int size) {
-	return (int) ceil(((float) size) / tnum);
+int get_stripe(int tnum) {
+	return (int) ceil(((float) SIZE) / tnum);
 }
 
 int get_init(int id, int stripe) {
@@ -100,16 +100,16 @@ void freetrix(TYPEDEF **A) {
 	free(A);
 }
 
-void init(TYPEDEF ***A, int fact) {
-	srand(time(0));
-	(*A) = (TYPEDEF**) malloc(sizeof(TYPEDEF*) * SIZE);
-	for (int i = 0; i < SIZE; i++) {
-		(*A)[i] = (TYPEDEF*) malloc(sizeof(TYPEDEF) * SIZE);
-		for (int j = 0; j < SIZE; j++) {
-			(*A)[i][j] = rand() % fact + 1;
-		}
-	}
-}
+// void init(TYPEDEF ***A, int fact) {
+// 	srand(time(0));
+// 	(*A) = (TYPEDEF**) malloc(sizeof(TYPEDEF*) * SIZE);
+// 	for (int i = 0; i < SIZE; i++) {
+// 		(*A)[i] = (TYPEDEF*) malloc(sizeof(TYPEDEF) * SIZE);
+// 		for (int j = 0; j < SIZE; j++) {
+// 			(*A)[i][j] = rand() % fact + 1;
+// 		}
+// 	}
+// }
 
 
 void minit(TYPEDEF ***A, int fact) {
@@ -134,15 +134,6 @@ void zinit(TYPEDEF ***A) {
 	}
 }
 
-typedef struct structure {
-	TYPEDEF data;
-	struct structure *next;
-} node;
-
-typedef struct {
-	node *beggin, *end;
-} line;
-
 void initiate(line *li) {
 	li -> beggin = NULL;
 	li -> end = NULL;
@@ -150,7 +141,6 @@ void initiate(line *li) {
 
 void insert(TYPEDEF data, line *li) {
 	node *new = (node*) malloc(sizeof(node));
-	new -> key = key;
 	new -> data = data;
 	new -> next = NULL;
 	if(!li -> beggin) {

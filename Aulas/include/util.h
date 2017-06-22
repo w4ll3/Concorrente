@@ -86,7 +86,7 @@ void lock();
 void unlock();
 
 /* Divide problem functions */
-int get_stripe(int tnum, int size);
+int get_stripe(int tnum);
 int get_init(int id, int stripe);
 int get_end(int init, int stripe);
 
@@ -107,6 +107,16 @@ void zinit(TYPEDEF ***A);
 void freetrix(TYPEDEF **A);
 
 /* Line */
+
+typedef struct structure {
+	TYPEDEF data;
+	struct structure *next;
+} node;
+
+typedef struct {
+	node *beggin, *end;
+} line;
+
 int remove(line *line);
 void insert(TYPEDEF data, line *li);
 void initiate(line *li);

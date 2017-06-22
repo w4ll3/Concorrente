@@ -1,4 +1,5 @@
 CC=gcc
+MPICC=mpicc
 SIZE=SMALL_DATASET
 IDIR=../include
 LINC=-I/usr/include
@@ -15,7 +16,7 @@ mm: dir
 	$(CC) $(UTIL) $@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
 
 mmmpi: dir
-	$(CC) $(UTIL) $@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
+	$(MPICC) $(UTIL) $@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
 
 rbsor: dir
 	$(CC) $(UTIL) $@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
