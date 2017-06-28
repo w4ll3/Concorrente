@@ -81,10 +81,6 @@
 /* Start pthread */
 void start_pthread(pthread_t *thread, int threads, void *(*parallel_pthread)(void*));
 
-/* Sync */
-void lock();
-void unlock();
-
 /* Divide problem functions */
 int get_stripe(int tnum);
 int get_init(int id, int stripe);
@@ -116,7 +112,3 @@ typedef struct structure {
 typedef struct {
 	node *beggin, *end;
 } line;
-
-int remove(line *line);
-void insert(TYPEDEF data, line *li);
-void initiate(line *li);

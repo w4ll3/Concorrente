@@ -80,7 +80,7 @@ static void *kernel_2mm_pthreads(void *arg) {
 	#endif
 
 	int *id = (int *) arg;
-	int stripe = get_stripe(T, ni);
+	int stripe = get_stripe(T);
 	int init = get_init(*id, stripe);
 	int end = get_end(init, stripe);
 
@@ -168,6 +168,8 @@ static void kernel_2mm() {
 }
 
 
+
+
 int main(int argc, char** argv) {
 	/* Retrieve which code to run */
 	int prog = atoi(argv[2]);
@@ -199,16 +201,16 @@ int main(int argc, char** argv) {
 			START_PAPI()
 			#endif
 			// Run sequential kernel
-			START_PAPI()
+			kernel_2mm();
 			break;
 		}
 
 		case 1: {
 			// Threads declaration
 			pthread_t threads[T];
-			PAPI_thread_init(pthread_self);
 
 			#ifdef PAPI
+			PAPI_thread_init(pthread_self);
 			START_PAPI()
 			#endif
 			// Initialize sync tools

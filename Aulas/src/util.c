@@ -25,17 +25,7 @@ long long counters[PAPI_SIZE];
 		printf("%lld\n", fcounter[i]);
 
 #endif
-
-pthread_mutex_t lock;
-
-void lock() {
-	pthread_mutex_lock(&lock);
-}
-
-void unlock() {
-	pthread_mutex_unlock(&lock);
-}
-
+	
 static unsigned long next = 1;
 
 int mrand(void) {
@@ -100,18 +90,6 @@ void freetrix(TYPEDEF **A) {
 	free(A);
 }
 
-// void init(TYPEDEF ***A, int fact) {
-// 	srand(time(0));
-// 	(*A) = (TYPEDEF**) malloc(sizeof(TYPEDEF*) * SIZE);
-// 	for (int i = 0; i < SIZE; i++) {
-// 		(*A)[i] = (TYPEDEF*) malloc(sizeof(TYPEDEF) * SIZE);
-// 		for (int j = 0; j < SIZE; j++) {
-// 			(*A)[i][j] = rand() % fact + 1;
-// 		}
-// 	}
-// }
-
-
 void minit(TYPEDEF ***A, int fact) {
 	msrand(2);
 	(*A) = (TYPEDEF**) malloc(sizeof(TYPEDEF*) * SIZE);
@@ -131,34 +109,5 @@ void zinit(TYPEDEF ***A) {
 		for (int j = 0; j < SIZE; j++) {
 			(*A)[i][j] = 0;
 		}
-	}
-}
-
-void initiate(line *li) {
-	li -> beggin = NULL;
-	li -> end = NULL;
-}
-
-void insert(TYPEDEF data, line *li) {
-	node *new = (node*) malloc(sizeof(node));
-	new -> data = data;
-	new -> next = NULL;
-	if(!li -> beggin) {
-		li -> beggin = new;
-	} else {
-		li -> end -> next = new;
-	}
-	li -> end = new;
-}
-
-int remove(line *line) {
-	node *elem = line -> beggin;
-	if(!elem) {
-		return -1;
-	} else {
-		int svc = elem -> data;
-		line -> beggin = elem -> next;
-		free(elem);
-		return svc;
 	}
 }
