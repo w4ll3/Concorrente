@@ -1,11 +1,4 @@
-/**
- * 2mm.c: This file is part of the PolyBench/C 3.2 test suite.
- *
- *
- * Contact: Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
- * Web address: http://polybench.sourceforge.net
- */
-
+/* Include util header */
 #include "util.h"
 
 /* Include polybench common header. */
@@ -15,18 +8,17 @@
 /* Default data type is double, default size is 4000. */
 #include "2mm.h"
 
+/* Include MPI */
+#include "mpi.h"
+
 /* Global arguments */
 int ni, nj, nk, nl, T = 1;
 double g_alpha, g_beta;
-double *g_tmp;
-double *g_A;
-double *g_B;
-double *g_C;
-double *g_D;
-
-/* Create barrier */
-pthread_barrier_t barrier;
-sem_t mutex;
+double *g_tmp = NULL;
+double *g_A = NULL;
+double *g_B = NULL;
+double *g_C = NULL;
+double *g_D = NULL;
 
 /* Array initialization. */
 static void init_array(double POLYBENCH_2D(A,NI,NK,ni,nl), double POLYBENCH_2D(B,NK,NJ,nk,nj), double POLYBENCH_2D(C,NL,NJ,nl,nj), double POLYBENCH_2D(D,NI,NL,ni,nl), double POLYBENCH_2D(tmp,NI,NJ,ni,nj)) {
@@ -69,74 +61,31 @@ static void init_array(double POLYBENCH_2D(A,NI,NK,ni,nl), double POLYBENCH_2D(B
 }
 
 
-void kernel_2mm_pthreads() {
-	#ifdef PAPI
-	PAPI_THREAD_INIT()
-	#endif
+void kernel_2mm(int id, int stripe) {
 
-	int init = get_init(*id, stripe);
+	int init = get_init(id, stripe);
 	int end = get_end(init, stripe);
 
 	for (int i = init; i < end; i++) {
 		for (int j = 0; j < NJ; j++) {
-			g_tmp[i][j] = 0;
-			for (int k = 0; k < NK; ++k) {
-				g_tmp[i][j] += g_alpha * g_A[i][k] * g_B[k][j];
+			g_tmp[i + j] = 0;
+			for (int k = 0; k < NK; k++) {
+				g_tmp[i + j] += g_alpha * g_A[i + k] * g_B[k + j];
 			}
 		}
 	}
-	//send(g_tmp)
-	//generate whole tmp
-	//recv(g_tmp)
-	pthread_barrier_wait(&barrier);
 	for (int i = init; i < end; i++) {
 		for (int j = 0; j < NJ; j++) {
-			g_D[i][j] *= g_beta;
-			for (int k = 0; k < NJ; ++k) {
-				g_D[i][j] += g_tmp[i][k] * g_C[k][j];
+			g_D[i + j] *= g_beta;
+			for (int k = 0; k < NJ; k++) {
+				g_D[i + j] += g_tmp[i + k] * g_C[k + j];
 			}
 		}
 	}
-
-	#ifdef PAPI
-	sem_wait(&mutex);
-	PAPI_UPDATE()
-	sem_post(&mutex);
-	#endif
-
-	return NULL;
-}
-
-/* Main computational kernel. The whole function will be timed, including the call and return. */
-/* Original sequential code */
-void kernel_2mm() {
-	/* D := alpha*A*B*C + beta*D */
-	/* A[i][j] */
-	/* i -> line */
-	/* j -> column */
-
-	for (int i = 0; i < ni; i++) {
-		for (int j = 0; j < nj; j++) {
-			g_tmp[i][j] = 0;
-			for (int k = 0; k < nk; ++k) {
-				g_tmp[i][j] += g_alpha * g_A[i][k] * g_B[k][j];
-			}
-		}
-	}
-	for(int i = 0; i < ni; i++) {
-		for (int j = 0; j < nl; j++) {
-			g_D[i][j] *= g_beta;
-			for (int k = 0; k < nj; ++k) {
-				g_D[i][j] += g_tmp[i][k] * g_C[k][j];
-			}
-		}
-	}
+	MPI_Send(g_D + (id * stripe), stripe, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
 }
 
 int main(int argc, char** argv) {
-	/* Retrieve which code to run */
-	int prog = atoi(argv[2]);
-
 	/* Retrieve problem size. */
 	ni = NI;
 	nj = NJ;
@@ -146,13 +95,6 @@ int main(int argc, char** argv) {
 	/* Number of threads */
 	T = atoi(argv[1]);
 
-	/* Variable declaration/allocation. */
-	POLYBENCH_2D_ARRAY_DECL(tmp,double,NI,NJ,ni,nj);
-	POLYBENCH_2D_ARRAY_DECL(A,double,NI,NK,ni,nk);
-	POLYBENCH_2D_ARRAY_DECL(B,double,NK,NJ,nk,nj);
-	POLYBENCH_2D_ARRAY_DECL(C,double,NL,NJ,nl,nj);
-	POLYBENCH_2D_ARRAY_DECL(D,double,NI,NL,ni,nl);
-
 	MPI_Init(NULL, NULL);
 	
 	int world_size;
@@ -161,39 +103,51 @@ int main(int argc, char** argv) {
 	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-	int stripe, begin, end;
+	int stripe = get_stripe(world_size);
 
-	stripe = get_stripe(world_size);
-	begin = world_rank * stripe;
-	end = begin + stripe;
+	printf("%s: %d\n", "Eu sou", world_rank);
 
 	if (!world_rank) {
-		// Initialize array(s).
+
+		/* Variable declaration/allocation. */
+		POLYBENCH_2D_ARRAY_DECL(tmp,double,NI,NJ,ni,nj);
+		POLYBENCH_2D_ARRAY_DECL(A,double,NI,NK,ni,nk);
+		POLYBENCH_2D_ARRAY_DECL(B,double,NK,NJ,nk,nj);
+		POLYBENCH_2D_ARRAY_DECL(C,double,NL,NJ,nl,nj);
+		POLYBENCH_2D_ARRAY_DECL(D,double,NI,NL,ni,nl);
+
 		init_array(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(D), POLYBENCH_ARRAY(tmp));
 
-		for (int i = 0; i < world_size; i++) {
-			MPI_Send(g_a + (i * stripe), stripe, MPI_INT, i, 1, MPI_COMM_WORLD);
-			MPI_Send(g_b + (i * stripe), stripe, MPI_INT, i, 1, MPI_COMM_WORLD);
+		for (int i = 1; i < world_size; i++) {
+			MPI_Send(g_A + (i * stripe), stripe, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
+			MPI_Send(g_B, SIZE * SIZE, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
+			MPI_Send(g_C, SIZE * SIZE, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
+			MPI_Send(g_D + (i * stripe), stripe, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
 		}
 
 	} else {
-		g_A = (int*) malloc(sizeof(int) * stripe);
-		g_B = (int*) malloc(sizeof(int) * stripe);
-		MPI_Recv(A, stripe, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		MPI_Recv(B, stripe, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		g_A = (double *) malloc(sizeof(double) * stripe * SIZE);
+		g_B = (double *) malloc(sizeof(double) * SIZE * SIZE);
+		g_C = (double *) malloc(sizeof(double) * SIZE * SIZE);
+		g_D = (double *) malloc(sizeof(double) * stripe * SIZE);
+		MPI_Recv(g_A, stripe * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Recv(g_B, SIZE * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Recv(g_C, SIZE * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Recv(g_D, stripe * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	}
+
+	kernel_2mm(world_rank, stripe);
+
+	if (!world_rank) {
+		for (int i = 1; i < world_size; i++) {
+			MPI_Recv(g_D + (i * stripe), stripe, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		}
 	}
 
 
 	#ifdef PAPI
 	ENDPAPI()
 	#endif
-
-	/* Be clean. */
-	POLYBENCH_FREE_ARRAY(tmp);
-	POLYBENCH_FREE_ARRAY(A);
-	POLYBENCH_FREE_ARRAY(B);
-	POLYBENCH_FREE_ARRAY(C);
-	POLYBENCH_FREE_ARRAY(D);
 
 	return 0;
 }

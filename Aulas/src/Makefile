@@ -4,7 +4,7 @@ SIZE=SMALL_DATASET
 IDIR=../include
 LINC=-I/usr/include
 UTIL=util.c
-CFLAGS=-std=gnu99 -Wall -fopenmp -I$(IDIR) $(LINC) -D$(SIZE) -O0 -lm -lpthread -lrt
+CFLAGS=-std=gnu99 -Wall -fopenmp -I$(IDIR) $(LINC) -D$(SIZE) -O3 -lm -lpthread -lrt
 ODIR=obj
 OTHERS=polybench
 PAPI?=
@@ -26,6 +26,9 @@ ludec: dir
 
 2mm: dir
 	$(CC) $(UTIL) $@.c $(OTHERS).c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
+
+mpi2mm: dir
+	$(MPICC) $(UTIL) $@.c $(OTHERS).c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
 
 .PHONY: clean
 
