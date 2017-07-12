@@ -14,48 +14,49 @@
 /* Global arguments */
 int ni, nj, nk, nl, T = 1;
 double g_alpha, g_beta;
-double *g_tmp = NULL;
-double *g_A = NULL;
-double *g_B = NULL;
-double *g_C = NULL;
-double *g_D = NULL;
+double *g_tmp;
+double *g_A;
+double *g_B;
+double *g_C;
+double *g_D;
 
 /* Array initialization. */
 static void init_array(double POLYBENCH_2D(A,NI,NK,ni,nl), double POLYBENCH_2D(B,NK,NJ,nk,nj), double POLYBENCH_2D(C,NL,NJ,nl,nj), double POLYBENCH_2D(D,NI,NL,ni,nl), double POLYBENCH_2D(tmp,NI,NJ,ni,nj)) {
 	g_alpha = 32412;
 	g_beta = 2123;
-	g_A = (double *) malloc(sizeof(double) * NI * NI);
-	g_B = (double *) malloc(sizeof(double) * NI * NI);
-	g_C = (double *) malloc(sizeof(double) * NI * NI);
-	g_D = (double *) malloc(sizeof(double) * NI * NI);
-	g_tmp = (double *) malloc(sizeof(double) * NI * NI);
+	g_A = (double *) malloc(sizeof(double) * SIZE * SIZE);
+	g_B = (double *) malloc(sizeof(double) * SIZE * SIZE);
+	g_C = (double *) malloc(sizeof(double) * SIZE * SIZE);
+	g_D = (double *) malloc(sizeof(double) * SIZE * SIZE);
+	g_tmp = (double *) malloc(sizeof(double) * SIZE * SIZE);
+
 	for (int i = 0; i < ni; i++) {
 		for (int j = 0; j < nk; j++) {
 			A[i][j] = ((double) i*j) / ni;
-			g_A[i + j] = A[i][j];
+			g_A[i * SIZE + j] = A[i][j];
 		}
 	}
 	for (int i = 0; i < nk; i++) {
 		for (int j = 0; j < nj; j++) {
 			B[i][j] = ((double) i*(j+1)) / nj;
-			g_B[i + j] = B[i][j];
+			g_B[i * SIZE + j] = B[i][j];
 		}
 	}
 	for (int i = 0; i < nl; i++) {
 		for (int j = 0; j < nj; j++) {
 			C[i][j] = ((double) i*(j+3)) / nl;
-			g_C[i + j] = C[i][j];
+			g_C[i * SIZE + j] = C[i][j];
 		}
 	}
 	for (int i = 0; i < ni; i++) {
 		for (int j = 0; j < nl; j++) {
 			D[i][j] = ((double) i*(j+2)) / nk;
-			g_D[i + j] = D[i][j];
+			g_D[i * SIZE + j] = D[i][j];
 		}
 	}
 	for (int i = 0; i < ni; i++) {
 		for (int j = 0; j < nj; j++) {
-			g_tmp[i + j] = tmp[i][j];
+			g_tmp[i * SIZE + j] = tmp[i][j];
 		}
 	}
 }
@@ -68,21 +69,21 @@ void kernel_2mm(int id, int stripe) {
 
 	for (int i = init; i < end; i++) {
 		for (int j = 0; j < NJ; j++) {
-			g_tmp[i + j] = 0;
+			g_tmp[i * SIZE + j] = 0;
 			for (int k = 0; k < NK; k++) {
-				g_tmp[i + j] += g_alpha * g_A[i + k] * g_B[k + j];
+				g_tmp[i * SIZE + j] += g_alpha * g_A[i * SIZE + k] * g_B[k * SIZE + j];
 			}
 		}
 	}
 	for (int i = init; i < end; i++) {
 		for (int j = 0; j < NJ; j++) {
-			g_D[i + j] *= g_beta;
+			g_D[i * SIZE + j] *= g_beta;
 			for (int k = 0; k < NJ; k++) {
-				g_D[i + j] += g_tmp[i + k] * g_C[k + j];
+				g_D[i * SIZE + j] += g_tmp[i * SIZE + k] * g_C[k * SIZE + j];
 			}
 		}
 	}
-	MPI_Send(g_D + (id * stripe), stripe, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+	MPI_Send(g_D + (id * stripe), stripe * stripe, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
 }
 
 int main(int argc, char** argv) {
@@ -91,10 +92,7 @@ int main(int argc, char** argv) {
 	nj = NJ;
 	nk = NK;
 	nl = NL;
-
-	/* Number of threads */
-	T = atoi(argv[1]);
-
+	
 	MPI_Init(NULL, NULL);
 	
 	int world_size;
@@ -105,7 +103,6 @@ int main(int argc, char** argv) {
 
 	int stripe = get_stripe(world_size);
 
-	printf("%s: %d\n", "Eu sou", world_rank);
 
 	if (!world_rank) {
 
@@ -130,6 +127,7 @@ int main(int argc, char** argv) {
 		g_B = (double *) malloc(sizeof(double) * SIZE * SIZE);
 		g_C = (double *) malloc(sizeof(double) * SIZE * SIZE);
 		g_D = (double *) malloc(sizeof(double) * stripe * SIZE);
+		g_tmp = (double *) malloc(sizeof(double) * SIZE * SIZE);
 		MPI_Recv(g_A, stripe * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		MPI_Recv(g_B, SIZE * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		MPI_Recv(g_C, SIZE * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -140,14 +138,20 @@ int main(int argc, char** argv) {
 
 	if (!world_rank) {
 		for (int i = 1; i < world_size; i++) {
-			MPI_Recv(g_D + (i * stripe), stripe, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			MPI_Recv(g_D + (i * stripe), stripe * stripe, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		}
+
+		printf("D\n");
+		for (int i = 0; i < SIZE; i++) {
+			for (int j = 0; j < SIZE; j++) {
+				printf("%f ", g_D[i * SIZE + j]);
+			}
+			printf("\n");
+		}
+
 	}
 
-
-	#ifdef PAPI
-	ENDPAPI()
-	#endif
+	MPI_Finalize();
 
 	return 0;
 }

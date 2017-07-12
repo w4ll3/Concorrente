@@ -9,7 +9,7 @@
 # ifndef SIZE
 
 #	ifdef DEBUG
-#		define SIZE 128
+#		define SIZE 8
 #	endif
 
 #	ifdef MINI
