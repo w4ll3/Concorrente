@@ -1,3 +1,3 @@
 #./dir.sh
 #./copy.sh
-mpirun obj/mpi$1 -np 2 -path ~/ -N 1
+mpirun -n 2 obj/mpi$1 -path ~/
