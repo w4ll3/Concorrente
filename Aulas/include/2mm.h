@@ -33,11 +33,11 @@
 #	endif
 
 #	ifdef STANDARD_DATASET
-#	 define NI 16
-#	 define NJ 16
-#	 define NK 16
-#	 define NL 16
-#	 define SIZE 16
+#	 define NI 1024
+#	 define NJ 1024
+#	 define NK 1024
+#	 define NL 1024
+#	 define SIZE 1024
 #	endif
 
 #	ifdef LARGE_DATASET

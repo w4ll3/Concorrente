@@ -44,26 +44,12 @@ static void init_array(int ni, int nj, int nk, int nl, double *alpha, double *be
 			g_A[i][j] = A[i][j];
 		}
 	}
-	printf("A\n");
-	for (int i = 0; i < SIZE; i++) {
-		for (int j = 0; j < SIZE; j++) {
-			printf("%f ", g_A[i][j]);
-		}
-		printf("\n");
-	}
 	for (int i = 0; i < nk; i++) {
 		g_B[i] = B[i];
 		for (int j = 0; j < nj; j++) {
 			B[i][j] = ((double) i*(j+1)) / nj;
 			g_B[i][j] = B[i][j];
 		}
-	}
-	printf("B\n");
-	for (int i = 0; i < SIZE; i++) {
-		for (int j = 0; j < SIZE; j++) {
-			printf("%f ", g_B[i][j]);
-		}
-		printf("\n");
 	}
 	for (int i = 0; i < nl; i++) {
 		g_C[i] = C[i];
@@ -72,26 +58,12 @@ static void init_array(int ni, int nj, int nk, int nl, double *alpha, double *be
 			g_C[i][j] = C[i][j];
 		}
 	}
-	printf("C\n");
-	for (int i = 0; i < SIZE; i++) {
-		for (int j = 0; j < SIZE; j++) {
-			printf("%f ", g_C[i][j]);
-		}
-		printf("\n");
-	}
 	for (int i = 0; i < ni; i++) {
 		g_D[i] = D[i];
 		for (int j = 0; j < nl; j++) {
 			D[i][j] = ((double) i*(j+2)) / nk;
 			g_D[i][j] = D[i][j];
 		}
-	}
-	printf("D\n");
-	for (int i = 0; i < SIZE; i++) {
-		for (int j = 0; j < SIZE; j++) {
-			printf("%f ", g_D[i][j]);
-		}
-		printf("\n");
 	}
 	for (int i = 0; i < ni; i++) {
 		g_tmp[i] = tmp[i];
@@ -192,13 +164,6 @@ static void kernel_2mm() {
 				g_D[i][j] += g_tmp[i][k] * g_C[k][j];
 			}
 		}
-	}
-	printf("D\n");
-	for (int i = 0; i < SIZE; i++) {
-		for (int j = 0; j < SIZE; j++) {
-			printf("%f ", g_D[i][j]);
-		}
-		printf("\n");
 	}
 }
 

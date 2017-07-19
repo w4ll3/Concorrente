@@ -1,12 +1,12 @@
 /* Include util header */
 #include "util.h"
 
-/* Include polybench common header. */
-#include <polybench.h>
-
 /* Include benchmark-specific header. */
 /* Default data type is double, default size is 4000. */
 #include "2mm.h"
+
+/* Include polybench common header. */
+#include <polybench.h>
 
 /* Include MPI */
 #include "mpi.h"
@@ -62,8 +62,8 @@ static void init_array(double POLYBENCH_2D(A,NI,NK,ni,nl), double POLYBENCH_2D(B
 
 void kernel_2mm(int id, int stripe, int world_size) {
 
-	int init = get_init(id, stripe);
-	int end = get_end(init, stripe);
+	int init = id * stripe;
+	int end = init + stripe;
 
 	for (int i = init; i < end; i++) {
 		for (int j = 0; j < NJ; j++) {
@@ -81,7 +81,8 @@ void kernel_2mm(int id, int stripe, int world_size) {
 			}
 		}
 	}
-	MPI_Send(g_D + (id * stripe * SIZE), stripe * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+	if(id != 0) MPI_Send(g_D + (id * stripe * SIZE), stripe * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+
 }
 
 int main(int argc, char** argv) {
@@ -127,55 +128,17 @@ int main(int argc, char** argv) {
 		g_D = (double *) malloc(sizeof(double) * SIZE * SIZE);
 		g_tmp = (double *) malloc(sizeof(double) * SIZE * SIZE);
 		MPI_Recv(g_A + (world_rank * stripe * SIZE), stripe * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		printf("A %d\n", SIZE);
-		for (int i = 0; i < SIZE; i++) {
-			for (int j = 0; j < SIZE; j++) {
-				printf("%f ", g_A[i * SIZE + j]);
-			}
-			printf("\n");
-		}
 		MPI_Recv(g_B, SIZE * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		printf("B\n");
-		for (int i = 0; i < SIZE; i++) {
-			for (int j = 0; j < SIZE; j++) {
-				printf("%f ", g_B[i * SIZE + j]);
-			}
-			printf("\n");
-		}
 		MPI_Recv(g_C, SIZE * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		printf("C\n");
-		for (int i = 0; i < SIZE; i++) {
-			for (int j = 0; j < SIZE; j++) {
-				printf("%f ", g_C[i * SIZE + j]);
-			}
-			printf("\n");
-		}
 		MPI_Recv(g_D + (world_rank * stripe * SIZE), stripe * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		printf("D\n");
-		for (int i = 0; i < SIZE; i++) {
-			for (int j = 0; j < SIZE; j++) {
-				printf("%f ", g_D[i * SIZE + j]);
-			}
-			printf("\n");
-		}
 	}
 
 	kernel_2mm(world_rank, stripe, world_size);
 
-	if (!world_rank) {
+	if (world_rank == 0) {
 		for (int i = 1; i < world_size; i++) {
-			MPI_Recv((g_D + (i * stripe * SIZE)), stripe * SIZE, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			MPI_Recv(g_D + (i * stripe * SIZE), stripe * SIZE, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		}
-
-		
-	printf("D\n");
-	for (int i = 0; i < SIZE; i++) {
-		for (int j = 0; j < SIZE; j++) {
-			printf("%f ", g_D[i * SIZE + j]);
-		}
-		printf("\n");
-	}
-
 	}
 
 	MPI_Finalize();
