@@ -30,6 +30,9 @@ ludec: dir
 mpi2mm: dir
 	$(MPICC) $(UTIL) $@.c $(OTHERS).c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
 
+mpi2mmgrid: dir
+	$(MPICC) $(UTIL) $@.c $(OTHERS).c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
+
 .PHONY: clean
 
 clean:

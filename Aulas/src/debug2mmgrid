@@ -1,0 +1,6 @@
+[DINSL010-109166:22958] *** An error occurred in MPI_Group_incl
+[DINSL010-109166:22958] *** reported by process [2504982529,0]
+[DINSL010-109166:22958] *** on communicator MPI_COMM_WORLD
+[DINSL010-109166:22958] *** MPI_ERR_RANK: invalid rank
+[DINSL010-109166:22958] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+[DINSL010-109166:22958] ***    and potentially your MPI job)
