@@ -1,6 +1,6 @@
 CC=gcc
 MPICC=mpicc
-SIZE=SMALL_DATASET
+SIZE=STANDARD_DATASET
 IDIR=../include
 LINC=-I/usr/include
 UTIL=util.c
