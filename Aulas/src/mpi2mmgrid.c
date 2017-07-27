@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
+#include <time.h>
 
 #define UP 0
 #define DOWN 1
@@ -15,6 +16,9 @@ MPI_Group groups[16];
 
 // Create a new communicator based on the group
 MPI_Comm rank_comm[16], directions[4];
+
+// Requests
+MPI_Request request[4] = { MPI_REQUEST_NULL };
 
 // Ranks relation
 const int ranks[][2] = {{ 0,  1}, // 00
@@ -154,6 +158,90 @@ void init_ranks() {
 			directions[LEFT] = MPI_COMM_NULL;
 			directions[RIGHT] = MPI_COMM_NULL;
 		} break;
+	}
+}
+
+void grid() {
+	int group_rank, completed_total = 0, test_result[4], completed[4], busy = 0;
+	double data;
+	while(1) {
+		// Listen to the sides
+		for (int i = 0; i < 4; i++) {
+			if (request[i] == MPI_REQUEST_NULL) {
+				MPI_Comm_rank(directions[i], &group_rank);
+				if (directions[i] != MPI_COMM_NULL) {
+					if (!group_rank)
+						MPI_Irecv(&data, 1, MPI_DOUBLE, 1, 1, directions[i], &request[i]);
+					else
+						MPI_Irecv(&data, 1, MPI_DOUBLE, 0, 1, directions[i], &request[i]);
+				}
+			}
+		}
+		// Check for completed requests in the sides
+		while (completed_total < 1) {
+			for (int i = 0; i < 4; i++) {
+				if (request[i] != MPI_REQUEST_NULL) {
+					MPI_Test(&request[i], &test_result[i], MPI_STATUS_IGNORE);
+					if (test_result[i])
+						completed[completed_total++] = i;
+				}
+			}
+		}
+		/*
+			12    11
+			06 07 08
+			03 04 05
+			00 01 02
+			09    10
+		*/
+		for (int i = 0; i < completed_total; i++) {
+			switch (completed[i]) {
+				case UP: {
+					// 09 / 00 / 03 / 06 / 01 / 04 / 10 / 05 / 08
+					switch (world_rank) {
+						// Processors
+						case 6:
+						case 8:
+							busy = 0;
+
+						default: {
+							if (!busy) {
+								int pos;
+								srand(time(0));
+								while (completed[i] == (pos = rand() % 4));
+								MPI_Send(&data, 1, MPI_DOUBLE, !group_rank, 1, directions[pos]);
+							}
+						} break;
+					}
+				} break;
+
+				case DOWN: {
+					switch (world_rank) {
+						case 12:
+						case 9:
+							busy = 0;
+
+						default: {
+							if (!busy) {
+								int pos;
+								srand(time(0));
+								while (completed[i] == (pos = rand() % 4));
+								MPI_Send(&data, 1, MPI_DOUBLE, !group_rank, 1, directions[pos]);
+							}
+						} break;
+					}
+				} break;
+
+				default: {
+					if (!busy) {
+						int pos;
+						srand(time(0));
+						while (completed[i] == (pos = rand() % 4));
+						MPI_Send(&data, 1, MPI_DOUBLE, !group_rank, 1, directions[pos]);
+					}
+				} break;
+			}
+		}
 	}
 }
 
