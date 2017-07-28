@@ -2,48 +2,53 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include <time.h>
+#include <unistd.h>
 
 #define UP 0
 #define DOWN 1
 #define LEFT 2
 #define RIGHT 3
+#define TAG 666
 
 // Get the group of processes in MPI_COMM_WORLD
 MPI_Group world_group;
 
 // Construct a group containing all of the ranks in world_group
-MPI_Group groups[16];
+MPI_Group groups[16] = { MPI_GROUP_NULL };
 
 // Create a new communicator based on the group
-MPI_Comm rank_comm[16], directions[4];
+MPI_Comm rank_comm[16] = { MPI_COMM_NULL }, directions[4] = { MPI_COMM_NULL };
 
 // Requests
-MPI_Request request[4] = { MPI_REQUEST_NULL };
+MPI_Request request[4];
+
+// Status
+MPI_Status STATUS;
 
 // Ranks relation
-const int ranks[][2] = {{ 0,  1}, // 00
-						{ 0,  3}, // 01
-						{ 0,  9}, // 02
-						{ 1,  2}, // 03
-						{ 1,  4}, // 04
-						{ 2,  5}, // 05
-						{ 2, 10}, // 06
-						{ 3,  4}, // 07
-						{ 3,  6}, // 08
-						{ 4,  5}, // 09
-						{ 4,  7}, // 10
-						{ 5,  8}, // 11
-						{ 6,  7}, // 12
-						{ 6, 12}, // 13
-						{ 7,  8}, // 14
-						{ 8, 11}  // 15
-					};
+const int ranks[16][2] = {  { 0,  1},
+							{ 0,  3},
+							{ 0,  9},
+							{ 1,  2},
+							{ 1,  4},
+							{ 2,  5},
+							{ 2, 10},
+							{ 3,  4},
+							{ 3,  6},
+							{ 4,  5},
+							{ 4,  7},
+							{ 5,  8},
+							{ 6,  7},
+							{ 6, 12},
+							{ 7,  8},
+							{ 8, 11}
+						};
 
 
 // Sizes
 int world_rank, world_size;
 
-void init_ranks() {
+void init() {
 	switch(world_rank) {
 		/*
 		R    U   D   L   R
@@ -162,28 +167,38 @@ void init_ranks() {
 }
 
 void grid() {
-	int group_rank, completed_total = 0, test_result[4], completed[4], busy = 0;
-	double data;
+	int group_rank[4] = { -1 }, completed_total = 0, test_result[4] = { 0 }, completed[4] = { 0 }, busy = 0;
+	double data[2] = { 0 };
+
+    for (int i = 0; i < 4; i++) {
+        request[i] = MPI_REQUEST_NULL;
+    }
+
 	while(1) {
+		sleep(1);
 		// Listen to the sides
 		for (int i = 0; i < 4; i++) {
-			if (request[i] == MPI_REQUEST_NULL) {
-				MPI_Comm_rank(directions[i], &group_rank);
-				if (directions[i] != MPI_COMM_NULL) {
-					if (!group_rank)
-						MPI_Irecv(&data, 1, MPI_DOUBLE, 1, 1, directions[i], &request[i]);
+			if (directions[i] != MPI_COMM_NULL) {
+				MPI_Comm_rank(directions[i], &group_rank[i]);
+                if (request[i] == MPI_REQUEST_NULL) {
+					if (world_rank == 0)
+						MPI_Irecv(&data[0], 1, MPI_DOUBLE, 1, TAG, directions[i], &request[i]);
 					else
-						MPI_Irecv(&data, 1, MPI_DOUBLE, 0, 1, directions[i], &request[i]);
+						MPI_Irecv(&data[0], 1, MPI_DOUBLE, 0, TAG, directions[i], &request[i]);
 				}
 			}
 		}
 		// Check for completed requests in the sides
-		while (completed_total < 1) {
+		while (!completed_total) {
 			for (int i = 0; i < 4; i++) {
-				if (request[i] != MPI_REQUEST_NULL) {
-					MPI_Test(&request[i], &test_result[i], MPI_STATUS_IGNORE);
-					if (test_result[i])
-						completed[completed_total++] = i;
+				if (directions[i] != MPI_COMM_NULL) {
+					if (request[i] != MPI_REQUEST_NULL) {
+						MPI_Test(&request[i], &test_result[completed_total], &STATUS);
+						if (test_result[i]) {
+							completed[completed_total] = i;
+							completed_total++;
+						}
+					}
 				}
 			}
 		}
@@ -195,6 +210,7 @@ void grid() {
 			09    10
 		*/
 		for (int i = 0; i < completed_total; i++) {
+			printf("Request from %d completed in %d.\n", completed[i], world_rank);
 			switch (completed[i]) {
 				case UP: {
 					// 09 / 00 / 03 / 06 / 01 / 04 / 10 / 05 / 08
@@ -209,7 +225,8 @@ void grid() {
 								int pos;
 								srand(time(0));
 								while (completed[i] == (pos = rand() % 4));
-								MPI_Send(&data, 1, MPI_DOUBLE, !group_rank, 1, directions[pos]);
+								if (group_rank[i] != -1) MPI_Send(data, 2, MPI_DOUBLE, !group_rank[i], TAG, directions[pos]);
+								busy = 1;
 							}
 						} break;
 					}
@@ -226,7 +243,8 @@ void grid() {
 								int pos;
 								srand(time(0));
 								while (completed[i] == (pos = rand() % 4));
-								MPI_Send(&data, 1, MPI_DOUBLE, !group_rank, 1, directions[pos]);
+								MPI_Send(data, 2, MPI_DOUBLE, !group_rank[i], TAG, directions[pos]);
+								busy = 1;
 							}
 						} break;
 					}
@@ -237,7 +255,8 @@ void grid() {
 						int pos;
 						srand(time(0));
 						while (completed[i] == (pos = rand() % 4));
-						MPI_Send(&data, 1, MPI_DOUBLE, !group_rank, 1, directions[pos]);
+						MPI_Send(data, 2, MPI_DOUBLE, !group_rank[i], TAG, directions[pos]);
+						busy = 1;
 					}
 				} break;
 			}
@@ -245,35 +264,47 @@ void grid() {
 	}
 }
 
-int main(int count, char *argv[]) {
+void dispatcher(int req) {
+	double data[2] = { 0 };
+	for (int i = 0; i < req; i++) {
+		MPI_Send(data, 2, MPI_DOUBLE, 0, 1, directions[UP]);
+	}
+	MPI_Recv(data, 2, MPI_DOUBLE, 0, 0, directions[UP], &STATUS);
+}
 
-	MPI_Init(0, 0);
+void process() {
+	double size[2] = { 0 };
+	int free = 1;
+	if (world_rank > 10) {
+		MPI_Recv(size, 2, MPI_DOUBLE, 0, 0, directions[DOWN], &STATUS);
+		// kernel_2mm();
+		MPI_Send(&free, 1, MPI_INT, 0, TAG, directions[DOWN]);
+	} else {
+		MPI_Recv(size, 2, MPI_DOUBLE, 0, 0, directions[UP], &STATUS);
+		// kernel_2mm();
+		MPI_Send(&free, 1, MPI_INT, 0, TAG, directions[UP]);
+	}
+}
+
+int main(int count, char *argv[]) {
+	MPI_Init(NULL, NULL);
 	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-
 	MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+
 	for (int i = 0; i < 16; i++) {
 		MPI_Group_incl(world_group, 2, ranks[i], &groups[i]);
 		MPI_Comm_create(MPI_COMM_WORLD, groups[i], &rank_comm[i]);
 	}
 
+	init();
 
-	int void_rank = -1, void_size = -1;
-	// If this rank isn't in the new communicator, it will be
-	// MPI_COMM_NULL. Using MPI_COMM_NULL for MPI_Comm_rank or
-	// MPI_Comm_size is erroneous
-
-	for (int i = 0; i < 16; i++) {
-		if (MPI_COMM_NULL != rank_comm[i]) {
-			MPI_Comm_rank(rank_comm[i], &void_rank);
-			MPI_Comm_size(rank_comm[i], &void_size);
-		}
-	}
-
-	init_ranks();
-
-	printf("WORLD RANK/SIZE: %d/%d \t PRIME RANK/SIZE: %d/%d\n",
-		world_rank, world_size, void_rank, void_size);
+	if (world_rank == 9)
+		dispatcher(5);
+	else if (world_rank < 9)
+		grid();
+	else
+		process();
 
 	MPI_Finalize();
 }
