@@ -72,30 +72,7 @@ static void init_array(double POLYBENCH_2D(A,NI,NK,ni,nl), double POLYBENCH_2D(B
 }
 
 
-void kernel_2mm(int id, int stripe, int world_size) {
 
-	int init = id * stripe;
-	int end = init + stripe;
-
-	for (int i = init; i < end; i++) {
-		for (int j = 0; j < NJ; j++) {
-			g_tmp[i * SIZE + j] = 0;
-			for (int k = 0; k < NK; ++k) {
-				g_tmp[i * SIZE + j] += g_alpha * g_A[i * SIZE + k] * g_B[k * SIZE + j];
-			}
-		}
-	}
-	for (int i = init; i < end; i++) {
-		for (int j = 0; j < NJ; j++) {
-			g_D[i * SIZE + j] *= g_beta;
-			for (int k = 0; k < NJ; ++k) {
-				g_D[i * SIZE + j] += g_tmp[i * SIZE + k] * g_C[k * SIZE + j];
-			}
-		}
-	}
-	if(id != 0) MPI_Send(g_D + (id * stripe * SIZE), stripe * SIZE, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
-
-}
 
 int main(int argc, char** argv) {
 	/* Retrieve problem size. */
