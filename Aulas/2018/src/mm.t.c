@@ -46,8 +46,12 @@ void init() {
 	}
 }
 
-void mm() {
-	for(int i = 0; i < values[0]; i++)
+void *mm(void *args) {
+	int id = *((int*) args);
+	int stripe = ceil(values[0] / values[4]);
+	int begin = id * stripe;
+	int end = begin + stripe;
+	for(int i = begin; i < end; i++)
 		for(int j = 0; j < values[0]; j++)
 			for(int k = 0; k < values[3]; k++)
 				m_c[i][j] += m_a[i][k] * m_b[k][j];
@@ -97,8 +101,14 @@ int main(int argc, char *argv[]) {
 	} while(c != -1);
 	init();
 	TIME()
-	mm();
+	pthread_t *threads = calloc(values[4], sizeof(pthread_t));
+	int *ids = (int*) calloc(sizeof(int) * values[4], 0);
+	for(int i = 0; i < values[4]; i++, (ids[i] = i))
+		pthread_create(&threads[i], NULL, (void*) mm, (void*) &ids[i]);
+	for(int i = 0; i < values[4]; i++)
+		pthread_join(threads[i], NULL);
 	ENDTIME()
+	printf("%d\n", elapsed);
 	// printf("time: %f | proc_time: %f, mflops: %f, flpins: %lld\n", real_time, proc_time, mflops, flpins);
 	exit(EXIT_SUCCESS);
 }
