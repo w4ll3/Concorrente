@@ -5,8 +5,10 @@
 #include <getopt.h>
 #include <pthread.h>
 #include <time.h>
+#include <semaphore.h>
 
 void freetrix(float **m_a, int size);
+void rantrix(double **m, int size, int max);
 
 double elapsed;
 

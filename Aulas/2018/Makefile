@@ -18,6 +18,9 @@ mm.s: dir
 mm.t: dir
 	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
 
+rbsor.t: dir
+	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
+
 .PHONY: clean
 
 clean:
