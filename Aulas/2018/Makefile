@@ -20,6 +20,9 @@ mm.t: dir
 
 rbsor.t: dir
 	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
+	
+stack.t: dir
+	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
 
 .PHONY: clean
 
