@@ -54,6 +54,16 @@ int main(int argc, char *argv[]) {
 	// PAPI_library_init(PAPI_VER_CURRENT);
 	// PAPI_thread_init(pthread_self);
 	srand(time(NULL));
+
+    //MPI Stuff
+    MPI_Init(argc, argv);
+
+    int world_size;
+    int world_rank;
+
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
 	int c;
 	struct option long_args[] = {
 		{"la", required_argument, NULL, 'a'},
@@ -95,6 +105,12 @@ int main(int argc, char *argv[]) {
 	init();
 	TIME()
 	mm();
+    if (world_rank == 0) {
+        printf("Done rank 0.\n");
+        for (int i = 1; i < world_size; i++) {
+            MPI_Recv(m_c);
+        }
+    }
 	ENDTIME()
 	// printf("time: %f | proc_time: %f, mflops: %f, flpins: %lld\n", real_time, proc_time, mflops, flpins);
 	exit(EXIT_SUCCESS);

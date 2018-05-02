@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <semaphore.h>
+#include "mpi.h"
 
 void freetrix(float **m_a, int size);
 void rantrix(double **m, int size, int max);
