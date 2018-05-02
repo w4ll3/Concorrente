@@ -108,7 +108,8 @@ int main(int argc, char *argv[]) {
     if (world_rank == 0) {
         printf("Done rank 0.\n");
         for (int i = 1; i < world_size; i++) {
-            MPI_Recv(m_c);
+	    // https://stackoverflow.com/questions/5901476/sending-and-receiving-2d-array-over-mpi
+            MPI_Recv(m_c, );
         }
     }
 	ENDTIME()
