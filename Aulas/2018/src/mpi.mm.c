@@ -11,29 +11,32 @@ void init() {
 		exit(EXIT_FAILURE);
 	}
 	m_a = (float**) malloc(sizeof(float*) * values[0]);
+	float *d_a = (float*) malloc(sizeof(float) * values[0] * values[1]);
 	m_b = (float**) malloc(sizeof(float*) * values[2]);
+	float *d_b = (float*) malloc(sizeof(float) * values[2] * values[3]);
 	m_c = (float**) malloc(sizeof(float*) * values[0]);
+	float *d_c = (float*) malloc(sizeof(float) * values[0] * values[3]);
 	if(values[0] != values[1] || values[2] != values[3]) {
 		for(int i = 0; i < values[1]; i++) {
-			m_a[i] = (float*) malloc(sizeof(float) * values[1]);
+			m_a[i] = &(d_a[values[1] * i]);
 			for(int j = 0; j < values[1]; j++)
 				m_a[i][j] = rand() % 100 / rand() % 100 + 1;
 		}
 		for(int i = 0; i < values[3]; i++) {
-			m_b[i] = (float*) malloc(sizeof(float) * values[3]);
+			m_b[i] = &(d_b[values[3] * i]);
 			for(int j = 0; j < values[1]; j++)
 				m_b[i][j] = rand() % 100 / rand() % 100 + 1;
 		}
 		for(int i = 0; i < values[0]; i++) {
-			m_c[i] = (float*) malloc(sizeof(float) * values[3]);
+			m_c[i] = &(d_c[values[3] * i]);
 			for(int j = 0; j < values[3]; j++)
 				m_c[i][j] = 0;
 		}
 	} else {
 		for(int i = 0; i < values[1]; i++) {
-			m_a[i] = (float*) malloc(sizeof(float) * values[1]);
-			m_b[i] = (float*) malloc(sizeof(float) * values[3]);
-			m_c[i] = (float*) malloc(sizeof(float) * values[3]);
+			m_a[i] = &(d_a[values[1] * i]);
+			m_b[i] = &(d_b[values[3] * i]);
+			m_c[i] = &(d_c[values[3] * i]);
 			for(int j = 0; j < values[1]; j++) {
 				m_a[i][j] = rand() % 1000 / (rand() % 100 + 1);
 				m_b[i][j] = rand() % 1000 / (rand() % 100 + 1);
@@ -56,7 +59,7 @@ int main(int argc, char *argv[]) {
 	srand(time(NULL));
 
     //MPI Stuff
-    MPI_Init(argc, argv);
+    MPI_Init(&argc, &argv);
 
     int world_size;
     int world_rank;
@@ -97,7 +100,7 @@ int main(int argc, char *argv[]) {
 				\n\tNúmero de linhas da matriz A (--la | -a). \
 				\n\tNúmero de colunas da matriz A (--ca | -b). \
 				\n\tNúmero de linhas da matriz B (--lb | -c). \
-				\n\tNúmero de colunas da matriz B (--cb | -d). \
+				\n\tNúmero de colunas da matriz BIT (--cb | -d). \
 				\n\tNúmero de threads (--threads | -t).\n");
 			} exit(EXIT_FAILURE);
 		}
@@ -108,11 +111,14 @@ int main(int argc, char *argv[]) {
     if (world_rank == 0) {
         printf("Done rank 0.\n");
         for (int i = 1; i < world_size; i++) {
-	    // https://stackoverflow.com/questions/5901476/sending-and-receiving-2d-array-over-mpi
-            MPI_Recv(m_c, );
-        }
-    }
+            MPI_Recv(&(m_c[0][0]), values[0] * values[3], MPI_FLOAT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			printf("Received from %d.\n", i);
+		}
+    } else {
+		MPI_Send(&(m_c[0][0]), values[0] * values[3], MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
+	}
 	ENDTIME()
 	// printf("time: %f | proc_time: %f, mflops: %f, flpins: %lld\n", real_time, proc_time, mflops, flpins);
-	exit(EXIT_SUCCESS);
+	// http://din.uem.br/~anderson/PC.T2.pdf
+	MPI_Finalize();
 }
