@@ -1,1 +1,1 @@
-mpirun -n 4 -hostfile hosts ~/mpi.$1 -a $2 -b $2 -c $2 -d $2 -t 1 -t 1 >> mpi.$1.data
+mpirun --mca btl_tcp_if_include enp3s0 -n 12 -hostfile hosts ~/$1 -a $2 -b $2 -c $2 -d $2 -t 1 > $1.data

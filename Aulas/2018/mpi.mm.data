@@ -1,14 +1,12 @@
-Done rank 0.
-84.323916
-Received from 1.
---------------------------------------------------------------------------
-ORTE has lost communication with its daemon located on node:
-
-  hostname:  10.30.2.48
-
-This is usually due to either a failure of the TCP network
-connection to the node, or possibly an internal failure of
-the daemon itself. We cannot recover from this failure, and
-therefore will terminate the job.
-
---------------------------------------------------------------------------
+7.488595
+7.569396
+7.570287
+10.264808
+10.629412
+11.649132
+12.007144
+12.376532
+12.739515
+13.093542
+13.454388
+13.444038

@@ -4,6 +4,10 @@ float **m_a, **m_b, **m_c;
 float real_time, proc_time, mflops;
 long long flpins;
 int values[5];
+int world_size;
+int world_rank;
+int chunk_i;
+int chunk_j;
 
 void init() {
 	if(values[1] != values[2]) {
@@ -16,40 +20,42 @@ void init() {
 	float *d_b = (float*) malloc(sizeof(float) * values[2] * values[3]);
 	m_c = (float**) malloc(sizeof(float*) * values[0]);
 	float *d_c = (float*) malloc(sizeof(float) * values[0] * values[3]);
-	if(values[0] != values[1] || values[2] != values[3]) {
-		for(int i = 0; i < values[1]; i++) {
-			m_a[i] = &(d_a[values[1] * i]);
-			for(int j = 0; j < values[1]; j++)
-				m_a[i][j] = rand() % 100 / rand() % 100 + 1;
-		}
-		for(int i = 0; i < values[3]; i++) {
-			m_b[i] = &(d_b[values[3] * i]);
-			for(int j = 0; j < values[1]; j++)
-				m_b[i][j] = rand() % 100 / rand() % 100 + 1;
-		}
-		for(int i = 0; i < values[0]; i++) {
-			m_c[i] = &(d_c[values[3] * i]);
-			for(int j = 0; j < values[3]; j++)
-				m_c[i][j] = 0;
-		}
-	} else {
-		for(int i = 0; i < values[1]; i++) {
-			m_a[i] = &(d_a[values[1] * i]);
-			m_b[i] = &(d_b[values[3] * i]);
-			m_c[i] = &(d_c[values[3] * i]);
-			for(int j = 0; j < values[1]; j++) {
-				m_a[i][j] = rand() % 1000 / (rand() % 100 + 1);
-				m_b[i][j] = rand() % 1000 / (rand() % 100 + 1);
-				m_c[i][j] = 0;
+	if(!world_rank) {
+		if(values[0] != values[1] || values[2] != values[3]) {
+			for(int i = 0; i < values[1]; i++) {
+				m_a[i] = &(d_a[values[1] * i]);
+				for(int j = 0; j < values[1]; j++)
+					m_a[i][j] = rand() % 100 / rand() % 100 + 1;
+			}
+			for(int i = 0; i < values[3]; i++) {
+				m_b[i] = &(d_b[values[3] * i]);
+				for(int j = 0; j < values[1]; j++)
+					m_b[i][j] = rand() % 100 / rand() % 100 + 1;
+			}
+			for(int i = 0; i < values[0]; i++) {
+				m_c[i] = &(d_c[values[3] * i]);
+				for(int j = 0; j < values[3]; j++)
+					m_c[i][j] = 0;
+			}
+		} else {
+			for(int i = 0; i < values[1]; i++) {
+				m_a[i] = &(d_a[values[1] * i]);
+				m_b[i] = &(d_b[values[3] * i]);
+				m_c[i] = &(d_c[values[3] * i]);
+				for(int j = 0; j < values[1]; j++) {
+					m_a[i][j] = rand() % 1000 / (rand() % 100 + 1);
+					m_b[i][j] = rand() % 1000 / (rand() % 100 + 1);
+					m_c[i][j] = 0;
+				}
 			}
 		}
 	}
 }
 
 void mm() {
-	for(int i = 0; i < values[0]; i++)
-		for(int j = 0; j < values[0]; j++)
-			for(int k = 0; k < values[3]; k++)
+	for(int i = 0; i < chunk_i; i++)
+		for(int j = 0; j < chunk_j; j++)
+			for(int k = 0; k < chunk_j; k++)
 				m_c[i][j] += m_a[i][k] * m_b[k][j];
 }
 
@@ -60,9 +66,6 @@ int main(int argc, char *argv[]) {
 
     //MPI Stuff
     MPI_Init(&argc, &argv);
-
-    int world_size;
-    int world_rank;
 
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
@@ -105,20 +108,22 @@ int main(int argc, char *argv[]) {
 			} exit(EXIT_FAILURE);
 		}
 	} while(c != -1);
+	
 	init();
+
+	MPI_Bcast(&(m_a[0][0]), (values[0] / world_size) * (values[3] / world_size), MPI_FLOAT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&(m_b[0][0]), (values[0] / world_size) * (values[3] / world_size), MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+	chunk_i = values[0] / world_size;
+	chunk_j = values[3] / world_size;
+
 	TIME()
-	mm();
     if (world_rank == 0) {
-        printf("Done rank 0.\n");
-        for (int i = 1; i < world_size; i++) {
-            MPI_Recv(&(m_c[0][0]), values[0] * values[3], MPI_FLOAT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			printf("Received from %d.\n", i);
-		}
-    } else {
-		MPI_Send(&(m_c[0][0]), values[0] * values[3], MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
-	}
+		mm();
+        for (int i = 1; i < world_size; i++)
+            MPI_Recv(&(m_c[i * chunk_i][i * chunk_j]), chunk_i * chunk_j, MPI_FLOAT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    } else MPI_Send(&(m_c[0][0]), chunk_i * chunk_j, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
 	ENDTIME()
-	// printf("time: %f | proc_time: %f, mflops: %f, flpins: %lld\n", real_time, proc_time, mflops, flpins);
 	// http://din.uem.br/~anderson/PC.T2.pdf
 	MPI_Finalize();
 }
