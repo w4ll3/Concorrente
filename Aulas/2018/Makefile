@@ -25,6 +25,10 @@ mpi.mm: dir
 
 rbsor.t: dir
 	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
+
+mpi.rbsor: dir
+	$(MPICC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
+	./copy.sh $(IPS) $@
 	
 stack.t: dir
 	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)

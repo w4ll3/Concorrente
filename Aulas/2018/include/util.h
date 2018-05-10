@@ -9,7 +9,6 @@
 #include "mpi.h"
 
 void freetrix(float **m_a, int size);
-void rantrix(double **m, int size, int max);
 
 double elapsed;
 

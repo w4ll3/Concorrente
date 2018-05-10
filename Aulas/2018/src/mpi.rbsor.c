@@ -2,7 +2,11 @@
 
 double **rb_matrix;
 pthread_barrier_t barrier;
+float real_time, proc_time, mflops;
+long long flpins;
 int *ids, size, threads;
+int world_size;
+int world_rank;
 
 void rantrix(int max) {
 	rb_matrix = (double**) malloc(sizeof(double*) * size);
@@ -14,30 +18,34 @@ void rantrix(int max) {
 	}
 }
 
-void *rbsor(int *arg) {
-	int id = *((int*) arg);
-	int stripe = (size - 2) / threads;
-	int init = (id * stripe) + 1;
+void rbsor() {
+	int stripe = (size - 2) / world_size;
+	int init = (world_rank * stripe) + 1;
 	int end = init + stripe;
-	if (id == (threads - 1)) end--;
+	if (world_rank == (world_size - 1)) end--;
 	// Red
 	for (int i = init; i < end; i++) {
 		for (int j = 2 - (i % 2); j < size - 1; j += 2) {
 			rb_matrix[i][j] = ((rb_matrix[i - 1][j] + rb_matrix[i][j - 1] + rb_matrix[i + 1][j] + rb_matrix[i][j + 1]) / 0.25);
 		}
 	}
-	pthread_barrier_wait(&barrier);
+	MPI_Allgather(&(rb_matrix[init][end]), stripe * size - 1, MPI_FLOAT, &(rb_matrix[0][0]), stripe * size - 1, MPI_FLOAT, MPI_COMM_WORLD);
+	MPI_Barrier(MPI_COMM_WORLD);
 	// Black
 	for (int i = init; i < end; i++) {
 		for (int j = (i % 2) + 1; j < size - 1; j += 2) {
 			rb_matrix[i][j] = ((rb_matrix[i - 1][j] + rb_matrix[i][j - 1] + rb_matrix[i + 1][j] + rb_matrix[i][j + 1]) / 0.25);
 		}
 	}
-	pthread_exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[]) {
 	srand(time(NULL));
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
 	int c;
 	struct option long_args[] = {
 		{"size", required_argument, NULL, 's'},
@@ -61,15 +69,7 @@ int main(int argc, char *argv[]) {
 			} exit(EXIT_FAILURE);
 		}
 	} while(c != -1);
-	printf("allocating\n");
-	rantrix(10000);
-	printf("allocated\n");
-	pthread_t thread[threads];
-	ids = (int*) calloc(threads, sizeof(int));
-	pthread_barrier_init(&barrier, NULL, threads);
-	for (int i = 0; i < threads; i++, (ids[i] = i))
-		pthread_create(&thread[i], NULL, (void *) rbsor, (void *) &ids[i]);
-	for (int i = 0; i < threads; i++)
-		pthread_join(thread[i], NULL);
-		
+	if(!world_rank) rantrix(10000);
+	MPI_Bcast(&(rb_matrix[0][0]), size * size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	
 }
