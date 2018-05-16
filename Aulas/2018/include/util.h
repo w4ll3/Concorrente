@@ -6,7 +6,11 @@
 #include <pthread.h>
 #include <time.h>
 #include <semaphore.h>
-#include "mpi.h"
+#include <omp.h>
+
+#ifdef MPI
+	#include "mpi.h"
+#endif
 
 void freetrix(float **m_a, int size);
 
