@@ -14,6 +14,9 @@ MPI=-DMPI
 dir:
 	mkdir -p $(ODIR)
 
+sort.mp: dir
+	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
+
 mm.s: dir
 	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
 

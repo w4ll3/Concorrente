@@ -7,6 +7,7 @@
 #include <time.h>
 #include <semaphore.h>
 #include <omp.h>
+#include <limits.h>
 
 #ifdef MPI
 	#include "mpi.h"
