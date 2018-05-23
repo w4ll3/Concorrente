@@ -40,6 +40,12 @@ mpi.rbsor: dir
 stack.t: dir
 	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
 
+kmeans.mp:
+	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
+
+kmain.mp: dir kmeans.mp
+	$(CC) $(UTIL) $(SRC)/$@.c -o $(ODIR)/$@ $(CFLAGS) $(PAPI)
+
 .PHONY: clean
 
 clean:
